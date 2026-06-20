@@ -30,49 +30,36 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
 @Composable
 fun NoEventBusDemoApp() {
     var selectedScreen by remember { mutableStateOf<Screen>(Screen.Home) }
-    val homeVm: HomeViewModel = hiltViewModel()
-    val authVm: AuthViewModel = hiltViewModel()
+    
+    // 1. 处理全局通知 (仅在顶层消费)
     val notificationVm: NotificationViewModel = hiltViewModel()
-    
     val snackbarHostState = remember { SnackbarHostState() }
-    val loginState by authVm.loginState.collectAsStateWithLifecycle()
-    
-    // 全局登录弹窗状态
-    var showLoginDialog by rememberSaveable { mutableStateOf(false) }
-
-    // 1. 监听通知流
     LaunchedEffect(Unit) {
-        notificationVm.notifications.collectLatest { message ->
-            snackbarHostState.showSnackbar(message)
-        }
+        notificationVm.notifications.collectLatest { snackbarHostState.showSnackbar(it) }
     }
 
-    // 2. 响应式联动：登录成功自动关闭全局弹窗
+    // 2. 处理全局登录弹窗与状态
+    val authVm: AuthViewModel = hiltViewModel()
+    val loginState by authVm.loginState.collectAsStateWithLifecycle()
+    var showLoginDialog by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(loginState) {
-        if (loginState is LoginState.Login) {
-            showLoginDialog = false
-        }
+        if (loginState is LoginState.Login) showLoginDialog = false
     }
-    
+
+    // 3. 处理底栏 Badge (借用 HomeViewModel 提供的逻辑流)
+    val homeVm: HomeViewModel = hiltViewModel()
     val showBadge by homeVm.shouldShowMessageBadge.collectAsStateWithLifecycle()
     
     Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(selectedScreen.label, fontWeight = FontWeight.Bold) }
-            )
-        },
+        topBar = { CenterAlignedTopAppBar(title = { Text(selectedScreen.label, fontWeight = FontWeight.Bold) }) },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             NavigationBar {
-                val items = listOf(Screen.Home, Screen.Message, Screen.Mine)
-                items.forEach { screen ->
+                listOf(Screen.Home, Screen.Message, Screen.Mine).forEach { screen ->
                     NavigationBarItem(
                         icon = { 
-                            BadgedBox(badge = {
-                                if (screen is Screen.Message && showBadge) Badge() 
-                            }) {
-                                Icon(screen.icon, contentDescription = screen.label)
+                            BadgedBox(badge = { if (screen is Screen.Message && showBadge) Badge() }) {
+                                Icon(screen.icon, contentDescription = null)
                             }
                         },
                         label = { Text(screen.label) },
@@ -84,22 +71,15 @@ fun NoEventBusDemoApp() {
         }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
+            // 核心改进：子页面不再透传 ViewModel，内部通过 hiltViewModel() 自动获取单例
             when (selectedScreen) {
-                is Screen.Home -> HomeScreen(
-                    homeVm = homeVm, 
-                    onLoginClick = { showLoginDialog = true }
-                )
-                is Screen.Message -> MessageScreen(
-                    onLoginClick = { showLoginDialog = true }
-                )
-                is Screen.Mine -> MineScreen(
-                    onLoginClick = { showLoginDialog = true }
-                )
+                is Screen.Home -> HomeScreen(onLoginClick = { showLoginDialog = true })
+                is Screen.Message -> MessageScreen(onLoginClick = { showLoginDialog = true })
+                is Screen.Mine -> MineScreen(onLoginClick = { showLoginDialog = true })
             }
         }
     }
 
-    // 渲染全局登录弹窗
     if (showLoginDialog) {
         LoginDialog(
             state = loginState,

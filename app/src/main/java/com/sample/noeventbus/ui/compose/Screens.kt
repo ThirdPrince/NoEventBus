@@ -21,8 +21,8 @@ import com.sample.noeventbus.ui.viewmodel.MessageViewModel
 
 @Composable
 fun HomeScreen(
-    homeVm: HomeViewModel,
-    onLoginClick: () -> Unit
+    onLoginClick: () -> Unit,
+    homeVm: HomeViewModel = hiltViewModel() // 内部注入，不再从顶层透传
 ) {
     val loginState by homeVm.loginState.collectAsStateWithLifecycle()
     
@@ -36,21 +36,14 @@ fun HomeScreen(
         StatusDashboard(homeVm)
         
         if (loginState is LoginState.Logout) {
-            Button(
-                onClick = onLoginClick,
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            Button(onClick = onLoginClick, modifier = Modifier.fillMaxWidth()) {
                 Text("立即登录体验完整功能")
             }
         }
         
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
             Text(
-                text = "架构演示：每个页面现在都拥有独立的 ViewModel。状态同步依然通过底层的 Repository 实现，彻底解耦。",
+                text = "架构说明：每个页面现在都拥有独立的 ViewModel。状态同步依然通过底层的 Repository 实现，彻底解耦。",
                 modifier = Modifier.padding(16.dp),
                 style = MaterialTheme.typography.bodyMedium
             )
@@ -60,8 +53,8 @@ fun HomeScreen(
 
 @Composable
 fun MessageScreen(
-    msgVm: MessageViewModel = hiltViewModel(),
-    onLoginClick: () -> Unit
+    onLoginClick: () -> Unit,
+    msgVm: MessageViewModel = hiltViewModel()
 ) {
     val displayCount by msgVm.displayMessageCount.collectAsStateWithLifecycle()
     
@@ -74,17 +67,14 @@ fun MessageScreen(
             Icon(Icons.Default.Email, null, modifier = Modifier.size(100.dp), tint = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(16.dp))
             Text("您有 $displayCount 条未读消息", style = MaterialTheme.typography.headlineMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("数据实时同步自 MessageRepository", color = MaterialTheme.colorScheme.secondary)
+            Text("数据已与当前用户账号绑定", color = MaterialTheme.colorScheme.secondary)
         } else {
             Icon(Icons.Default.Lock, null, modifier = Modifier.size(100.dp), tint = MaterialTheme.colorScheme.error)
             Spacer(modifier = Modifier.height(16.dp))
             Text("受限内容", style = MaterialTheme.typography.headlineMedium)
-            Text("请先登录后查看消息", textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.secondary)
+            Text("请先登录后查看您的个人消息", textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.secondary)
             Spacer(modifier = Modifier.height(24.dp))
-            Button(onClick = onLoginClick) {
-                Text("去登录")
-            }
+            Button(onClick = onLoginClick) { Text("去登录") }
         }
     }
 }
@@ -106,7 +96,7 @@ fun MineScreen(onLoginClick: () -> Unit) {
 }
 
 @Composable
-fun StatusDashboard(homeVm: HomeViewModel) {
+fun StatusDashboard(homeVm: HomeViewModel = hiltViewModel()) {
     val user by homeVm.user.collectAsStateWithLifecycle()
     val loginState by homeVm.loginState.collectAsStateWithLifecycle()
     val displayCount by homeVm.displayMessageCount.collectAsStateWithLifecycle()
@@ -116,7 +106,7 @@ fun StatusDashboard(homeVm: HomeViewModel) {
             Text("实时状态看板", style = MaterialTheme.typography.titleMedium)
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             Text("👤 用户: ${user.name}")
-            Text("✉️ 消息: ${displayCount ?: "未登录隐藏"}")
+            Text("✉️ 消息: ${displayCount ?: "隐藏 (未登录)"}")
             Text("🔐 状态: ${if (loginState is LoginState.Login) "✅ 已登录" else "❌ 未登录"}")
         }
     }
