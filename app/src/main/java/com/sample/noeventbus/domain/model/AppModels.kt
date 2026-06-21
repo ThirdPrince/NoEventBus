@@ -1,12 +1,12 @@
 package com.sample.noeventbus.domain.model
 
-/**
- * 现代架构核心：UI 是状态的快照。
- * 我们不再需要 NameChangedEvent, LoginSuccessEvent 等，
- * 只需要观察这些状态的流。
- */
-
 data class User(val name: String)
+
+data class Message(
+    val id: String,
+    val content: String,
+    val timestamp: Long
+)
 
 sealed interface LoginState {
     object Logout : LoginState

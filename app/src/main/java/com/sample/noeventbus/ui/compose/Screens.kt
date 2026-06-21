@@ -22,7 +22,7 @@ import com.sample.noeventbus.ui.viewmodel.MessageViewModel
 @Composable
 fun HomeScreen(
     onLoginClick: () -> Unit,
-    homeVm: HomeViewModel = hiltViewModel() // 内部注入，不再从顶层透传
+    homeVm: HomeViewModel = hiltViewModel()
 ) {
     val loginState by homeVm.loginState.collectAsStateWithLifecycle()
     
@@ -43,7 +43,7 @@ fun HomeScreen(
         
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
             Text(
-                text = "架构说明：每个页面现在都拥有独立的 ViewModel。状态同步依然通过底层的 Repository 实现，彻底解耦。",
+                text = "架构说明：此看板同时观察 User、Auth 和 Message 状态。无论在哪个 Tab 登录或改名，这里都会瞬间同步，无需 EventBus。",
                 modifier = Modifier.padding(16.dp),
                 style = MaterialTheme.typography.bodyMedium
             )
@@ -67,7 +67,7 @@ fun MessageScreen(
             Icon(Icons.Default.Email, null, modifier = Modifier.size(100.dp), tint = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(16.dp))
             Text("您有 $displayCount 条未读消息", style = MaterialTheme.typography.headlineMedium)
-            Text("数据已与当前用户账号绑定", color = MaterialTheme.colorScheme.secondary)
+            Text("数据已实时持久化", color = MaterialTheme.colorScheme.secondary)
         } else {
             Icon(Icons.Default.Lock, null, modifier = Modifier.size(100.dp), tint = MaterialTheme.colorScheme.error)
             Spacer(modifier = Modifier.height(16.dp))
@@ -96,7 +96,7 @@ fun MineScreen(onLoginClick: () -> Unit) {
 }
 
 @Composable
-fun StatusDashboard(homeVm: HomeViewModel = hiltViewModel()) {
+fun StatusDashboard(homeVm: HomeViewModel) {
     val user by homeVm.user.collectAsStateWithLifecycle()
     val loginState by homeVm.loginState.collectAsStateWithLifecycle()
     val displayCount by homeVm.displayMessageCount.collectAsStateWithLifecycle()

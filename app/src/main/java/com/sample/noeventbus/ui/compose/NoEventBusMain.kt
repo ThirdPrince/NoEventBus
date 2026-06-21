@@ -31,35 +31,54 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
 fun NoEventBusDemoApp() {
     var selectedScreen by remember { mutableStateOf<Screen>(Screen.Home) }
     
-    // 1. 处理全局通知 (仅在顶层消费)
-    val notificationVm: NotificationViewModel = hiltViewModel()
-    val snackbarHostState = remember { SnackbarHostState() }
-    LaunchedEffect(Unit) {
-        notificationVm.notifications.collectLatest { snackbarHostState.showSnackbar(it) }
-    }
-
-    // 2. 处理全局登录弹窗与状态
-    val authVm: AuthViewModel = hiltViewModel()
-    val loginState by authVm.loginState.collectAsStateWithLifecycle()
-    var showLoginDialog by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(loginState) {
-        if (loginState is LoginState.Login) showLoginDialog = false
-    }
-
-    // 3. 处理底栏 Badge (借用 HomeViewModel 提供的逻辑流)
+    // 注入 ViewModel (统一使用 ui.viewmodel 包下的实现)
     val homeVm: HomeViewModel = hiltViewModel()
+    val authVm: AuthViewModel = hiltViewModel()
+    val notificationVm: NotificationViewModel = hiltViewModel()
+    
+    val snackbarHostState = remember { SnackbarHostState() }
+    val loginState by authVm.loginState.collectAsStateWithLifecycle()
+    
+    // 全局登录弹窗状态
+    var showLoginDialog by rememberSaveable { mutableStateOf(false) }
+
+    // 1. 全局一次性通知监听
+    LaunchedEffect(Unit) {
+        notificationVm.notifications.collectLatest { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
+
+    // 2. 响应式联动：登录成功自动关闭弹窗
+    LaunchedEffect(loginState) {
+        if (loginState is LoginState.Login) {
+            showLoginDialog = false
+        }
+    }
+    
+    // 3. 驱动底栏 Badge 的组合状态
     val showBadge by homeVm.shouldShowMessageBadge.collectAsStateWithLifecycle()
     
     Scaffold(
-        topBar = { CenterAlignedTopAppBar(title = { Text(selectedScreen.label, fontWeight = FontWeight.Bold) }) },
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(selectedScreen.label, fontWeight = FontWeight.Bold) }
+            )
+        },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             NavigationBar {
-                listOf(Screen.Home, Screen.Message, Screen.Mine).forEach { screen ->
+                val items = listOf(Screen.Home, Screen.Message, Screen.Mine)
+                items.forEach { screen ->
                     NavigationBarItem(
                         icon = { 
-                            BadgedBox(badge = { if (screen is Screen.Message && showBadge) Badge() }) {
-                                Icon(screen.icon, contentDescription = null)
+                            BadgedBox(badge = {
+                                // 核心要求：不再展示数目，仅展示红点
+                                if (screen is Screen.Message && showBadge) {
+                                    Badge() 
+                                }
+                            }) {
+                                Icon(screen.icon, contentDescription = screen.label)
                             }
                         },
                         label = { Text(screen.label) },
@@ -71,11 +90,18 @@ fun NoEventBusDemoApp() {
         }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
-            // 核心改进：子页面不再透传 ViewModel，内部通过 hiltViewModel() 自动获取单例
             when (selectedScreen) {
-                is Screen.Home -> HomeScreen(onLoginClick = { showLoginDialog = true })
-                is Screen.Message -> MessageScreen(onLoginClick = { showLoginDialog = true })
-                is Screen.Mine -> MineScreen(onLoginClick = { showLoginDialog = true })
+                // 三个页面均支持点击登录引导
+                is Screen.Home -> HomeScreen(
+                    onLoginClick = { showLoginDialog = true },
+                    homeVm = homeVm
+                )
+                is Screen.Message -> MessageScreen(
+                    onLoginClick = { showLoginDialog = true }
+                )
+                is Screen.Mine -> MineScreen(
+                    onLoginClick = { showLoginDialog = true }
+                )
             }
         }
     }
