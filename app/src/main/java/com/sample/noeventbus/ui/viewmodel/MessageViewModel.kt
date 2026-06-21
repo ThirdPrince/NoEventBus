@@ -6,10 +6,7 @@ import com.sample.noeventbus.domain.model.LoginState
 import com.sample.noeventbus.domain.repository.AuthRepository
 import com.sample.noeventbus.domain.repository.MessageRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -19,7 +16,7 @@ class MessageViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
-    // 属于消息页自己的逻辑：合并认证状态和消息计数
+    // 属于消息页自己的逻辑：仅在已登录时才向 UI 暴露数字
     val displayMessageCount: StateFlow<Int?> = combine(
         authRepository.loginState,
         messageRepository.count
