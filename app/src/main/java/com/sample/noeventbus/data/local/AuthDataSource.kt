@@ -10,26 +10,27 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private val Context.dataStore by preferencesDataStore(name = "auth_prefs")
+// 统一 DataStore 命名
+private val Context.authDataStore by preferencesDataStore(name = "auth_prefs")
 
 @Singleton
-class TokenManager @Inject constructor(
+class AuthDataSource @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val tokenKey = stringPreferencesKey("auth_token")
 
-    val token: Flow<String?> = context.dataStore.data.map { prefs ->
+    val token: Flow<String?> = context.authDataStore.data.map { prefs ->
         prefs[tokenKey]
     }
 
     suspend fun saveToken(token: String) {
-        context.dataStore.edit { prefs ->
+        context.authDataStore.edit { prefs ->
             prefs[tokenKey] = token
         }
     }
 
     suspend fun clearToken() {
-        context.dataStore.edit { prefs ->
+        context.authDataStore.edit { prefs ->
             prefs.remove(tokenKey)
         }
     }
